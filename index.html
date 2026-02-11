@@ -146,18 +146,39 @@ function resetNotes(){data.notes={}; save(); notesTab();}
 
 /* ÉTOILES */
 function starsTab(){
+  if(!data.stars) data.stars = {};
+
   let h="<h3>⭐ Étoiles</h3>";
+
   if(users[current].role=="prof"){
     h+=`<select id="e">${eleves().map(e=>`<option>${e}</option>`).join("")}</select>
-        <select id="v"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+        <select id="v">
+          <option>1</option>
+          <option>2</option>
+          <option>3</option>
+          <option>4</option>
+          <option>5</option>
+        </select>
         <button onclick="addStar()">➕</button>
         <button onclick="resetStars()">🗑️ Reset</button>`;
   }
+
   h+="<ul>";
-  for(let e in data.stars){
-    if(current==e||users[current].role!="eleve")
-      data.stars[e].forEach((s,i)=>h+=`<li>${users[e].name} : <span class="star">${"★".repeat(s)}</span> ${users[current].role=="prof"?`<span class="trash" onclick="delStar('${e}',${i})">🗑️</span>`:""}</li>`);
-  }
+
+  eleves().forEach(e=>{
+    if(current==e || users[current].role!="eleve"){
+      let stars = data.stars[e] || [];
+      stars.forEach((s,i)=>{
+        h+=`<li>${users[e].name} : 
+              <span class="star">${"★".repeat(s)}</span> ${
+              users[current].role=="prof"
+              ? `<span class="trash" onclick="delStar('${e}',${i})">🗑️</span>`
+              : ""
+            }</li>`;
+      });
+    }
+  });
+
   h+="</ul>";
   content.innerHTML=h;
 }
@@ -320,5 +341,6 @@ function delMot(eleve){
 </script>
 </body>
 </html>
+
 
 
