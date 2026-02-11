@@ -20,7 +20,9 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 </script>
+
 <title>SKIBIDI ENT 🔵</title>
+
 <style>
 body{font-family:Arial;background:#e8f0ff;margin:0}
 header{background:#0b5ed7;color:white;padding:10px;text-align:center;font-size:24px}
@@ -33,6 +35,7 @@ button{background:#0b5ed7;color:white;border:none;padding:6px 10px;border-radius
 textarea{width:300px;height:50px;display:block;margin-top:5px;margin-bottom:5px}
 </style>
 </head>
+
 <body>
 
 <header>📚 SKIBIDI ENT 🔵</header>
@@ -48,9 +51,12 @@ textarea{width:300px;height:50px;display:block;margin-top:5px;margin-bottom:5px}
 <div class="box" id="app" style="display:none">
   <div id="tabs"></div>
   <div id="content"></div>
-</div>
+</div><script>
 
-<script>
+/* =========================
+   UTILISATEURS
+========================= */
+
 const users={
   sahli:{pass:"sahli123",role:"prof",name:"M. Sahli"},
   bouhmadi:{pass:"bouhmadi123",role:"prof",name:"M. Bouhmadi"},
@@ -68,6 +74,10 @@ const users={
 let current = null;
 let data = {};
 
+/* =========================
+   FIREBASE LISTENER
+========================= */
+
 db.ref("/").on("value", snap => {
   data = snap.val() || {};
 
@@ -79,6 +89,11 @@ db.ref("/").on("value", snap => {
   if(!data.edtCancel) data.edtCancel = {};
   if(!data.mots) data.mots = {};
 });
+
+/* =========================
+   EMPLOI DU TEMPS
+========================= */
+
 const edt={
   "Lundi":["10h05-10h25","15h00-15h20"],
   "Mardi":["10h05-10h25"],
@@ -87,26 +102,51 @@ const edt={
   "Vendredi":["10h05-10h25"]
 };
 
+/* =========================
+   FONCTIONS GENERALES
+========================= */
+
 function save(){
   db.ref("/").set(data);
 }
-function eleves(){return Object.keys(users).filter(u=>users[u].role=="eleve");}
+
+function eleves(){
+  return Object.keys(users).filter(u=>users[u].role=="eleve");
+}
+
+/* =========================
+   CONNEXION
+========================= */
 
 function connect(){
-  if(!users[id.value]||users[id.value].pass!=pw.value){err.textContent="Erreur";return;}
+  if(!users[id.value] || users[id.value].pass!=pw.value){
+    err.textContent="Erreur";
+    return;
+  }
+
   current=id.value;
   login.style.display="none";
   app.style.display="block";
   buildTabs();
 }
 
+/* =========================
+   TABS
+========================= */
+
 function buildTabs(){
   let r=users[current].role;
+
   let t=["Notes","Étoiles","Missions","Emploi du temps","Appel"];
+
   if(r=="secretaire") t=["Justification"];
-  if(r=="prof" || current=="sahli" || r=="eleve") t.push("Mots"); // tous les élèves voient l'onglet
+
+  if(r=="prof" || current=="sahli" || r=="eleve") 
+    t.push("Mots");
+
   let h="";
   t.forEach(x=>h+=`<span class="tab" onclick="openTab('${x}')">${x}</span>`);
+
   tabs.innerHTML=h;
   openTab(t[0]);
 }
@@ -114,233 +154,376 @@ function buildTabs(){
 function openTab(n){
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
   [...tabs.children].find(x=>x.textContent==n).classList.add("active");
-  if(n=="Notes")notesTab();
-  if(n=="Étoiles")starsTab();
-  if(n=="Missions")missionsTab();
-  if(n=="Emploi du temps")edtTab();
-  if(n=="Appel")appelTab();
-  if(n=="Justification")justifTab();
-  if(n=="Mots")buildMotTab();
-}
 
-/* NOTES */
+  if(n=="Notes") notesTab();
+  if(n=="Étoiles") starsTab();
+  if(n=="Missions") missionsTab();
+  if(n=="Emploi du temps") edtTab();
+  if(n=="Appel") appelTab();
+  if(n=="Justification") justifTab();
+  if(n=="Mots") buildMotTab();
+}
+/* =========================
+   NOTES
+========================= */
+
 function notesTab(){
   let h="<h3>📊 Notes</h3>";
+
+  // Prof peut ajouter une note
   if(users[current].role=="prof"){
-    h+=`<select id="e">${eleves().map(e=>`<option>${e}</option>`).join("")}</select>
-        <input id="v" placeholder="15/20">
-        <button onclick="addNote()">➕</button>
-        <button onclick="resetNotes()">🗑️ Reset</button>`;
-  }
-  h+="<ul>";
-  for(let e in data.notes){
-    if(current==e||users[current].role!="eleve")
-      data.notes[e].forEach((n,i)=>h+=`<li>${users[e].name} : ${n} ${users[current].role=="prof"?`<span class="trash" onclick="delNote('${e}',${i})">🗑️</span>`:""}</li>`);
-  }
-  h+="</ul>";
-  content.innerHTML=h;
-}
-function addNote(){ if(!data.notes[e.value])data.notes[e.value]=[]; data.notes[e.value].push(v.value); save(); notesTab();}
-function delNote(e,i){data.notes[e].splice(i,1); save(); notesTab();}
-function resetNotes(){data.notes={}; save(); notesTab();}
-
-/* ÉTOILES */
-function starsTab(){
-  if(!data.stars) data.stars = {};
-
-  let h="<h3>⭐ Étoiles</h3>";
-
-  if(users[current].role=="prof"){
-    h+=`<select id="e">${eleves().map(e=>`<option>${e}</option>`).join("")}</select>
-        <select id="v">
-          <option>1</option>
-          <option>2</option>
-          <option>3</option>
-          <option>4</option>
-          <option>5</option>
-        </select>
-        <button onclick="addStar()">➕</button>
-        <button onclick="resetStars()">🗑️ Reset</button>`;
+    h+=`
+      <select id="noteEleve">
+        ${eleves().map(e=>`<option value="${e}">${users[e].name}</option>`).join("")}
+      </select>
+      <input id="noteValeur" placeholder="15/20">
+      <button onclick="addNote()">➕</button>
+      <button onclick="resetNotes()">🗑️ Reset</button>
+    `;
   }
 
   h+="<ul>";
 
   eleves().forEach(e=>{
-    if(current==e || users[current].role!="eleve"){
-      let stars = data.stars[e] || [];
-      stars.forEach((s,i)=>{
-        h+=`<li>${users[e].name} : 
-              <span class="star">${"★".repeat(s)}</span> ${
-              users[current].role=="prof"
-              ? `<span class="trash" onclick="delStar('${e}',${i})">🗑️</span>`
-              : ""
-            }</li>`;
-      });
+    if(data.notes[e]){
+      if(current==e || users[current].role!="eleve"){
+        data.notes[e].forEach((n,i)=>{
+          h+=`<li>
+                ${users[e].name} : ${n}
+                ${users[current].role=="prof"
+                  ? `<span class="trash" onclick="delNote('${e}',${i})">🗑️</span>`
+                  : ""
+                }
+              </li>`;
+        });
+      }
     }
   });
 
   h+="</ul>";
+
   content.innerHTML=h;
 }
-function addStar(){ if(!data.stars[e.value])data.stars[e.value]=[]; data.stars[e.value].push(parseInt(v.value)); save(); starsTab();}
-function delStar(e,i){data.stars[e].splice(i,1); save(); starsTab();}
-function resetStars(){data.stars={}; save(); starsTab();}
 
-/* MISSIONS */
+function addNote(){
+  const e=document.getElementById("noteEleve").value;
+  const v=document.getElementById("noteValeur").value.trim();
+  if(!v) return;
+
+  if(!data.notes[e]) data.notes[e]=[];
+  data.notes[e].push(v);
+
+  save();
+  notesTab();
+}
+
+function delNote(e,i){
+  data.notes[e].splice(i,1);
+  save();
+  notesTab();
+}
+
+function resetNotes(){
+  if(confirm("Supprimer toutes les notes ?")){
+    data.notes={};
+    save();
+    notesTab();
+  }
+}
+/* =========================
+   MISSIONS
+========================= */
+
 function missionsTab(){
-  let h="<h3>📚 Missions</h3>";
+  let h = "<h3>📚 Missions</h3>";
+
+  // Si c'est un prof → bouton ajouter
   if(users[current].role=="prof"){
-    h+=`<input id="m"><button onclick="addMission()">➕</button>`;
+    h += `
+      <input id="missionInput" placeholder="Nouvelle mission">
+      <button onclick="addMission()">➕</button>
+    `;
   }
-  h+="<ul>"+data.missions.map((m,i)=>`<li>${m} ${users[current].role=="prof"?`<span class="trash" onclick="delMission(${i})">🗑️</span>`:""}</li>`).join("")+"</ul>";
-  content.innerHTML=h;
-}
-function addMission(){data.missions.push(m.value); save(); missionsTab();}
-function delMission(i){data.missions.splice(i,1); save(); missionsTab();}
 
-/* EDT */
+  h += "<ul>";
+
+  if(data.missions && data.missions.length > 0){
+    data.missions.forEach((m,i)=>{
+      h += `
+        <li>
+          ${m}
+          ${users[current].role=="prof"
+            ? `<span class="trash" onclick="delMission(${i})">🗑️</span>`
+            : ""
+          }
+        </li>
+      `;
+    });
+  } else {
+    h += "<li>Aucune mission pour le moment.</li>";
+  }
+
+  h += "</ul>";
+
+  content.innerHTML = h;
+}
+
+function addMission(){
+  const input = document.getElementById("missionInput");
+  const texte = input.value.trim();
+
+  if(!texte) return alert("Écris une mission !");
+
+  if(!data.missions) data.missions = [];
+
+  data.missions.push(texte);
+
+  save();
+  missionsTab();
+}
+
+function delMission(index){
+  if(confirm("Supprimer cette mission ?")){
+    data.missions.splice(index,1);
+    save();
+    missionsTab();
+  }
+}/* =========================
+   EMPLOI DU TEMPS
+========================= */
+
 function edtTab(){
-  let h="<h3>🗓️ Emploi du temps</h3><ul>";
-  for(let j in edt){
-    let ann=data.edtCancel[j];
-    h+=`<li>${j} : ${ann?"❌ Annulé":edt[j].join(" / ")}
-    ${users[current].role=="prof"?(ann?`<button onclick="retablir('${j}')">🔄</button>`:`<button onclick="annuler('${j}')">❌</button>`):""}</li>`;
-  }
-  h+="</ul>";
-  content.innerHTML=h;
-}
-function annuler(j){data.edtCancel[j]=true; save(); edtTab();}
-function retablir(j){delete data.edtCancel[j]; save(); edtTab();}
+  let h = "<h3>🗓️ Emploi du temps</h3>";
+  h += "<ul>";
 
-/* APPEL */
+  for(let jour in edt){
+
+    let annule = data.edtCancel && data.edtCancel[jour];
+
+    h += "<li>";
+    h += "<strong>" + jour + "</strong> : ";
+
+    if(annule){
+      h += "❌ Annulé";
+    } else {
+      h += edt[jour].join(" / ");
+    }
+
+    // Boutons seulement pour les profs
+    if(users[current].role == "prof"){
+      if(annule){
+        h += ` <button onclick="retablirJour('${jour}')">🔄</button>`;
+      } else {
+        h += ` <button onclick="annulerJour('${jour}')">❌</button>`;
+      }
+    }
+
+    h += "</li>";
+  }
+
+  h += "</ul>";
+
+  content.innerHTML = h;
+}
+
+function annulerJour(jour){
+  if(!data.edtCancel) data.edtCancel = {};
+
+  data.edtCancel[jour] = true;
+  save();
+  edtTab();
+}
+
+function retablirJour(jour){
+  if(data.edtCancel){
+    delete data.edtCancel[jour];
+  }
+
+  save();
+  edtTab();
+}
+/* =========================
+   APPEL
+========================= */
+
 function appelTab(){
   let h="<h3>📝 Appel</h3>";
+
   if(users[current].role=="prof"){
-    h+=`<select id="e">${eleves().map(e=>`<option>${e}</option>`).join("")}</select>
-        <select id="v"><option>Présent</option><option>Absent</option><option>Retard</option></select>
-        <button onclick="setAppel()">Valider</button>`;
+    h += `
+      <select id="appelEleve">
+        ${eleves().map(e=>`<option value="${e}">${users[e].name}</option>`).join("")}
+      </select>
+      <select id="appelValeur">
+        <option value="Présent">Présent</option>
+        <option value="Absent">Absent</option>
+        <option value="Retard">Retard</option>
+      </select>
+      <button onclick="setAppel()">Valider</button>
+    `;
   }
-  h+="<ul>";
+
+  h += "<ul>";
   eleves().forEach(e=>{
-    if(current==e||users[current].role!="eleve"){
-      let st=data.appel[e]||"-";
-      let val=data.validation[e]||"⏳ En attente";
-      h+=`<li>${users[e].name} : ${st} (${val})</li>`;
+    const st = data.appel && data.appel[e] ? data.appel[e] : "-";
+    const val = data.validation && data.validation[e] ? data.validation[e] : "⏳ En attente";
+    
+    if(current==e || users[current].role!="eleve"){
+      h += `<li>${users[e].name} : ${st} (${val})</li>`;
     }
   });
-  h+="</ul>";
-  content.innerHTML=h;
-}
-function setAppel(){data.appel[e.value]=v.value; data.validation[e.value]="⏳ En attente"; save(); appelTab();}
+  h += "</ul>";
 
-/* SECRETAIRE */
+  content.innerHTML = h;
+}
+
+function setAppel(){
+  const e = document.getElementById("appelEleve").value;
+  const v = document.getElementById("appelValeur").value;
+
+  if(!data.appel) data.appel = {};
+  if(!data.validation) data.validation = {};
+
+  data.appel[e] = v;
+  data.validation[e] = "⏳ En attente";
+
+  save();
+  appelTab();
+}
+
+/* =========================
+   JUSTIFICATION SECRETAIRE
+========================= */
+
 function justifTab(){
   let h="<h3>📄 Justification d'absence</h3><ul>";
-  for(let e in data.appel){
-    h+=`<li>${users[e].name} : ${data.appel[e]} 
-    <button onclick="valide('${e}')">✅</button>
-    <button onclick="refuse('${e}')">❌</button></li>`;
-  }
-  h+="</ul>";
-  content.innerHTML=h;
-}
-function valide(e){data.validation[e]="Validé"; save(); justifTab();}
-function refuse(e){data.validation[e]="Refusé"; save(); justifTab();}
 
-/* --- MOTS DANS LE CARNET SECURISE + Poubelle M. Sahli --- */
+  for(let e in data.appel){
+    h += `<li>
+            ${users[e].name} : ${data.appel[e]} 
+            <button onclick="valide('${e}')">✅</button>
+            <button onclick="refuse('${e}')">❌</button>
+          </li>`;
+  }
+
+  h += "</ul>";
+  content.innerHTML = h;
+}
+
+function valide(e){
+  if(!data.validation) data.validation={};
+  data.validation[e] = "Validé";
+  save();
+  justifTab();
+}
+
+function refuse(e){
+  if(!data.validation) data.validation={};
+  data.validation[e] = "Refusé";
+  save();
+  justifTab();
+}
+
+/* =========================
+   MOTS DANS LE CARNET (Firebase)
+========================= */
+
 function buildMotTab(){
   let h="<h3>✉️ Mots dans le carnet</h3>";
+
+  // Prof ou M. Sahli peut envoyer
   if(users[current].role=="prof" || current=="sahli"){
-    h+=`<select id="motEleve">${eleves().map(e=>`<option>${e}</option>`).join("")}</select>
-        <textarea id="motTexte" placeholder="Texte du mot"></textarea>
-        <button onclick="envoyerMot()">Envoyer ✉️</button>`;
+    h+=`
+      <select id="motEleve">
+        ${eleves().map(e=>`<option value="${e}">${users[e].name}</option>`).join("")}
+      </select>
+      <textarea id="motTexte" placeholder="Texte du mot"></textarea>
+      <button onclick="envoyerMot()">Envoyer ✉️</button>
+    `;
   }
+
   h+="<ul id='motsList'></ul>";
   content.innerHTML=h;
+
   showMots();
 }
 
 function showMots(){
-  let ul=document.getElementById("motsList");
+  const ul = document.getElementById("motsList");
   if(!ul) return;
   ul.innerHTML="";
-  for(let e of eleves()){
-    let mot=JSON.parse(localStorage.getItem("mot_"+e) || "null");
+
+  eleves().forEach(e=>{
+    const mot = data.mots && data.mots[e] ? data.mots[e] : null;
     if(mot){
-      let li=document.createElement("li");
-      let role=users[current].role;
-      let statut=mot.statut;
-      let text=`${users[e].name} : "${mot.texte}" - ${statut}`;
+      let text = `${users[e].name} : "${mot.texte}" - ${mot.statut}`;
 
-      // Poubelle uniquement pour M. Sahli
-      if(current=="sahli"){
-        text=`<span class="trash" onclick="delMot('${e}')">🗑️</span> ` + text;
-      }
+      // Prof ou M. Sahli contrôle la poubelle
+      if(current=="sahli") text = `<span class="trash" onclick="delMot('${e}')">🗑️</span> ` + text;
 
-      // Prof peut valider/refuser si mot signé
-      if((role=="prof" || current=="sahli") && statut=="Signé, en attente validation prof"){
+      // Prof valide/refuse si signé
+      if((users[current].role=="prof" || current=="sahli") && mot.statut=="Signé, en attente validation prof"){
         text+=` <button onclick="valideMot('${e}')">✅ Valider</button>
                 <button onclick="refuseMot('${e}')">❌ Refuser</button>`;
       }
 
-      // Élève peut signer seulement si c’est son mot et pas encore signé
-      if(role=="eleve" && current==e && statut=="Pas encore signé"){
+      // Élève signe seulement son mot si pas encore signé
+      if(users[current].role=="eleve" && current==e && mot.statut=="Pas encore signé"){
         text+=` <button onclick="signerMot('${e}')">Signer ✍️</button>`;
       }
 
-      li.innerHTML=text;
+      const li = document.createElement("li");
+      li.innerHTML = text;
       ul.appendChild(li);
     }
-  }
+  });
 }
 
 function envoyerMot(){
-  let e=document.getElementById("motEleve").value;
-  let texte=document.getElementById("motTexte").value.trim();
+  const e = document.getElementById("motEleve").value;
+  const texte = document.getElementById("motTexte").value.trim();
   if(!texte) return alert("Écrire un mot !");
-  let mot={texte:texte, statut:"Pas encore signé"};
-  localStorage.setItem("mot_"+e, JSON.stringify(mot));
+
+  if(!data.mots) data.mots={};
+  data.mots[e] = {texte:texte, statut:"Pas encore signé"};
+
+  save();
   showMots();
-  alert("✅ Mot envoyé à "+users[e].name);
 }
 
-function signerMot(eleve){
-  let mot=JSON.parse(localStorage.getItem("mot_"+eleve));
-  if(!mot) return;
-  mot.statut="Signé, en attente validation prof";
-  localStorage.setItem("mot_"+eleve, JSON.stringify(mot));
-  showMots();
-  alert("✅ Mot signé par l'élève "+users[eleve].name);
+function signerMot(e){
+  if(data.mots && data.mots[e]){
+    data.mots[e].statut = "Signé, en attente validation prof";
+    save();
+    showMots();
+  }
 }
 
-function valideMot(eleve){
-  let mot=JSON.parse(localStorage.getItem("mot_"+eleve));
-  if(!mot) return;
-  mot.statut="Validé ✅";
-  localStorage.setItem("mot_"+eleve, JSON.stringify(mot));
-  showMots();
-  alert("✅ Mot validé par le prof");
+function valideMot(e){
+  if(data.mots && data.mots[e]){
+    data.mots[e].statut = "Validé ✅";
+    save();
+    showMots();
+  }
 }
 
-function refuseMot(eleve){
-  let mot=JSON.parse(localStorage.getItem("mot_"+eleve));
-  if(!mot) return;
-  mot.statut="Refusé ❌";
-  localStorage.setItem("mot_"+eleve, JSON.stringify(mot));
-  showMots();
-  alert("❌ Mot refusé par le prof");
+function refuseMot(e){
+  if(data.mots && data.mots[e]){
+    data.mots[e].statut = "Refusé ❌";
+    save();
+    showMots();
+  }
 }
 
-// Fonction pour supprimer mot (poubelle M. Sahli)
-function delMot(eleve){
-  localStorage.removeItem("mot_"+eleve);
-  showMots();
-  alert("🗑️ Mot supprimé pour "+users[eleve].name);
+function delMot(e){
+  if(data.mots && data.mots[e]){
+    delete data.mots[e];
+    save();
+    showMots();
+  }
 }
-
 </script>
 </body>
 </html>
-
 
 
